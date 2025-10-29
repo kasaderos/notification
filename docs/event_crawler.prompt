@@ -1,0 +1,9 @@
+implement event-crawler that union all domains from notification rules and requests to start page of this domains and pushes to queue (interface in service/event/dependency.go) (only once when I run)
+
+So I expect
+cmd/event-crawler/main.go // just run App
+internal/config/event-crawler/config.go // configs
+internal/app/event-crawler/app.go // Run() func
+interal/service/event/collect_events.go // main logic just do http requests by domains and parses (removes js code, css code some, only plain html) and pushes to EventQueue
+ 
+

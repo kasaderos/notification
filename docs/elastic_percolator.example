@@ -1,0 +1,74 @@
+PUT /events_percolators
+{
+  "mappings": {
+    "properties": {
+      "query": {
+        "type": "percolator"
+      },
+      "user_id": {
+        "type": "keyword"
+      },
+      "domain": {
+        "type": "keyword"
+      },
+      "content": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+PUT /events_percolators/_doc/1
+{
+  "user_id": "user_100",
+  "domain": ["bbc.com", "tengrievents.kz"],
+  "query": {
+    "match": {
+      "content": "elon musk tesla afadsf"
+    }
+  }
+}
+
+PUT /events_percolators/_doc/2
+{
+  "user_id": "user_200",
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "domain": "bbc.com"
+          }
+        },
+        {
+          "match": {
+            "content": "tesla"
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+
+GET /events_percolators/_search
+{
+  "_source": ["user_id", "domain", "url_pattern"],
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "percolate": {
+            "field": "query",
+            "document": {
+              "domain": "bbc.com",
+              "url": "https://www.bbc.com/events/elon-musk-tesla-launch.html",
+              "content": "Elon Musk revealed a new Tesla model during the event."
+            }
+          }
+        }
+      ]
+    }
+  }
+}

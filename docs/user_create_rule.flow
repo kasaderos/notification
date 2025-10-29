@@ -1,0 +1,6 @@
+title Notification system User Flow
+
+User->Agent: Create Agent
+User->Notification: Create NotificationRule
+Notification->Subscription: Create Subscription
+User->Subscription: Start S 

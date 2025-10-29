@@ -1,0 +1,260 @@
+Generate events agent telegram bot 
+
+1. Entities
+
+Notification
+{
+    "id": "uuidv4",
+    "type": "events",
+    "events": [] 
+    "createdAt": 100000 // unix milli
+}
+
+NotificationRule
+{
+    "id": "uuidv4",
+    "rule": {
+        "sources": {
+            "domains": ["tengrievents.kz"]
+        }
+        "keywords: ["Iran"]
+        "prompt": "some prompt" // feature
+        "schedule": {
+            "time": "10:00"
+            "asap": false // feature
+        }
+    },
+    "createdAt": 100000 // unix milli
+    "updatedAt: 100000 // unix milli
+    "version": 1
+}
+
+Agent
+{
+    "id": "uuidv4"
+    "userID": "uuidv4" // binded user
+    "name": "Frank"  // may be updated
+    "subscription": {} // is stored somewhere
+    "eventsCount": 100
+    "createdAt": 100000 // unix milli
+    "updatedAt: 100000 // unix milli
+}
+Methods:
+Agent.CreateNotification()
+
+Subscription
+{
+    "agentID": "uuidv4"
+    "keywords": []
+    "sources": {
+        "domains": []
+    } 
+    "ttl": 1000s // for monetization
+    "createdAt": 10000 // unix milli
+    "updatedAt: 100000 // unix milli
+}
+
+Env
+{
+    "name": "events" // unique
+    "sources": {
+       "domains": ["tengrievents.kz"]
+    }
+}
+Methods: // stubs
+Env.Subscribe(Subscription)
+Env.Unsubscribe(SubscriptionID)
+Env.SendEvents() // sends events to Agent
+
+
+2. Web API handlers:
+
+- create events rule:
+1. Find agent (if not exist create Agent) and bind Env to Agent
+2. Agent subscribes to events of Env by Subscription
+
+- update events rule:
+1. Find Rule and update
+2. Update Subscription
+
+- delete events rule
+1. Unsubscribe
+2. Delete Subscription
+3. Delete Agent
+4. Delete Rule
+
+// Telegram Bot API
+// Each NotificationRuleService method now corresponds to a Telegram bot command handler.
+
+Commands:
+    /create_rule - Create a new notification rule
+    /update_rule - Update an existing notification rule
+    /delete_rule - Delete a notification rule
+
+// Command Handlers
+// On /create_rule, receive parameters (via message or custom keyboard), create rule and respond
+// On /update_rule, receive updated parameters, update rule and respond
+// On /delete_rule, receive rule ID or keyword, delete rule and notify user
+
+
+3. Project files, folders structure
+├── cmd
+│   └── tgbot 
+│       └── main.go
+ |    |——--job 
+├── internal
+│   ├── config
+        |—— tgbot
+                |-- config.go // bot token
+│   ├── handler
+        |—— tgbot
+                |—— mapper.go 
+                |—— dependency.go 
+                |—— handler.go
+│   ├── model
+        |—— agent.go // without json, db tags
+        |—— env.go
+        |-- event.go
+        |-- notification_rule.go
+        |-- notification.go
+        |-- subscription.go
+        |-- user.go
+│   ├── repository 
+        |—— event // rabbitmq
+        |—— notification-rule // postgres
+                |—— repository.go
+                |—— model.go.   // json, db tag
+                |—— mapper.go  // model mappers
+                |—— dependency.go // interfaces
+                |-- fetch.go
+                |—— create.go
+                |—— update.go
+                |—— delete.go
+        |—— agent // postgres
+                |—— repository.go
+                |—— model.go.   // json, db tag
+                |—— mapper.go  // model mappers
+                |—— dependency.go // interfaces
+                |-- fetch.go
+                |—— create.go
+                |—— update.go
+                |—— delete.go
+        |—— user // postgres
+                |—— repository.go
+                |—— model.go.   // json, db tag
+                |—— mapper.go  // model mappers
+                |—— dependency.go // interfaces
+                |-- fetch.go
+                |—— create.go
+                |—— update.go
+                |—— delete.go
+        |—— subscription // postgres
+                |—— repository.go
+                |—— model.go.   // json, db tag
+                |—— mapper.go  // model mappers
+                |—— dependency.go // interfaces
+                |-- fetch.go
+                |—— create.go
+                |—— update.go
+                |—— delete.go
+        |—— events // elastic  
+                |—— repository.go
+                |—— model.go.   // json, db tag
+                |—— mapper.go  // model mappers
+                |—— dependency.go // interfaces
+                |-- create_query.go
+                |—— percolate.go
+│   ├── service 
+        |--item
+            |—— dependency.go // interfaces
+            |—— create.go
+            |—— search.go
+├── pkg
+│   ├── elastic 
+├── README.md
+├── go.mod
+|-- .golangci-lint.yaml // basic linters
+├── Makefile // make lint 
+|——- Dockerfile // use support jsonv2
+|——- compose.yaml - for local deployment 
+
+4. Repository layer
+
+use percolator of elastic search
+
+PUT /events_percolator
+{
+  "mappings": {
+    "properties": {
+        "query": {
+            "type": "percolator"
+        },
+        "domain": {
+            "type": keyword
+        }
+        "userID": {
+            "type": "keyword"
+        },
+        "title": {
+            "type": "text"
+        }
+        "content": {
+            "type": "text"
+        },
+        "version": {
+            "type": long 
+        }
+    }
+  }
+}
+
+PUT /events
+{
+  "mappings": {
+    "properties": {
+        "domain": {
+            "type": keyword
+        }
+        "url": {
+            "type": keyword
+        }
+        "title": {
+            "type": "text"
+        },
+        "content": {
+            "type": "text"
+        }
+        "createdAt": {
+            "type": long
+        }
+    }
+  }
+}
+
+// Message queue kafka 
+Event
+{
+    "userID": "uuidv4" 
+    "url": "url"
+    "title": "title"
+}
+
+// Postgres
+user:
+    id uuid primary key
+    name varchar(255) not null
+    agent_id uuid null
+    subscription_id uuid null
+
+agent:
+    id uuid default:uuid primary key
+    name varchar(255) not null
+    subscription_id uuid not null
+    events_count int64 default 0 not null
+    created_at timestamp default now not null
+    updated_at timestamp default now not null
+
+subscription:
+    id uuid primary key
+    expired_at timestamp null
+    created_at timestamp default now not null
